@@ -1,83 +1,203 @@
 <div align="center">
 
-# 🎯 Anthropic Subscription Optimization
+# 🔌 Claude Subscription Bridge
 
-**Educational Documentation & Implementation Patterns for Claude Access**
+**Educational Documentation for Programmatic Claude Access Patterns**
+
+[![Educational Purpose](https://img.shields.io/badge/Purpose-Educational%20Only-red?style=for-the-badge)](https://github.com/ShreeMulay/anthropic-subscription-optimization)
+[![Unofficial](https://img.shields.io/badge/Status-Unofficial-orange?style=for-the-badge)](https://github.com/ShreeMulay/anthropic-subscription-optimization)
+[![Risk Level](https://img.shields.io/badge/Risk%20Level-High-red?style=for-the-badge)](https://github.com/ShreeMulay/anthropic-subscription-optimization)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Documentation](https://img.shields.io/badge/Status-Educational-blue)](https://github.com/shreemulay/anthropic-subscription-optimization)
-
-*Understanding how to leverage Claude subscriptions efficiently*
+[![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://typescriptlang.org)
 
 </div>
 
 ---
 
+> [!CAUTION]
+> ## ⚠️ CRITICAL LEGAL NOTICE
+> 
+> This documentation is for **EDUCATIONAL PURPOSES ONLY**. Using these methods may violate [Anthropic's Terms of Service](https://www.anthropic.com/legal/terms).
+> 
+> **RISKS INCLUDE:**
+> - 🚫 **Immediate account suspension or termination**
+> - 🚫 **Loss of access to ALL Claude services**
+> - 🚫 **Potential legal action from Anthropic**
+> 
+> **This is NOT intended for:**
+> - Commercial SaaS redistribution
+> - Reselling access to Anthropic's services
+> - Production applications
+> 
+> **By proceeding, you acknowledge these risks and accept full responsibility.**
+> 
+> See [LEGAL.md](./LEGAL.md) for detailed information.
+
+---
+
+## 📋 Table of Contents
+
+- [⚠️ Legal Disclaimer](#-critical-legal-notice)
+- [🔧 Prerequisites](#-prerequisites)
+- [📖 Overview](#-overview)
+- [💰 Economic Context](#-economic-context-why-this-matters)
+- [🏗️ Pattern 1: OAuth + Beta Headers](#pattern-1-oauth-token--beta-headers)
+- [🏗️ Pattern 2: CLI Proxy Server](#pattern-2-claude-cli-proxy-server)
+- [🆚 Pattern Comparison](#-pattern-comparison)
+- [🤔 Which Pattern Should I Use?](#-which-pattern-should-i-use)
+- [🔒 Security Best Practices](#-security-best-practices)
+- [📚 Existing Implementations](#-existing-implementations)
+- [🤖 AI Prompts for Custom Implementation](#-ai-prompts-for-custom-implementation)
+- [🔄 Failure Modes & Mitigations](#-failure-modes--mitigations)
+- [📖 Further Reading](#-further-reading)
+- [🤝 Contributing](#-contributing)
+
+---
+
+## 🔧 Prerequisites
+
+Before proceeding, ensure you have:
+
+### Required for Both Patterns
+- ✅ **Active Claude Pro or Max subscription** ($20-200/month)
+- ✅ **Claude Code CLI installed and authenticated** ([Installation Guide](https://docs.anthropic.com/en/docs/claude-code/getting-started))
+- ✅ Understanding of OAuth 2.0 flows
+- ✅ Basic HTTP/API knowledge
+
+### For OAuth + Headers Pattern (Python)
+```bash
+pip install httpx  # or: uv pip install httpx
+```
+
+### For CLI Proxy Pattern (TypeScript/Bun)
+```bash
+curl -fsSL https://bun.sh/install | bash
+bun --version  # Verify installation
+```
+
+### Verify Claude CLI Authentication
+```bash
+# Run this to confirm Claude CLI is working
+claude --version
+claude "Hello, world" --print
+```
+
+---
+
 ## 📖 Overview
 
-This repository documents two implementation patterns for accessing Anthropic Claude models using your Claude Max/Pro subscription instead of the pay-per-token API. These techniques enable significant cost savings (often 10x or more) while maintaining access to Claude's capabilities.
+This repository documents **two implementation patterns** for accessing Anthropic Claude models using your Claude Max/Pro subscription programmatically, instead of the pay-per-token API.
 
-> ⚠️ **Educational Purpose Only**: This documentation is for learning and understanding API integration patterns. Usage may be subject to Anthropic's Terms of Service.
+```mermaid
+flowchart LR
+    subgraph "Your Application"
+        A[Your Code]
+    end
+    
+    subgraph "Pattern Choice"
+        B{Which Pattern?}
+    end
+    
+    subgraph "Pattern 1: OAuth"
+        C[Extract OAuth Token]
+        D[Add Beta Headers]
+        E[Direct API Call]
+    end
+    
+    subgraph "Pattern 2: CLI Proxy"
+        F[HTTP Server]
+        G[Spawn CLI Subprocess]
+        H[Parse JSON Output]
+    end
+    
+    subgraph "Anthropic"
+        I[Claude API]
+    end
+    
+    A --> B
+    B -->|Fast, High Risk| C
+    B -->|Stable, Medium Risk| F
+    C --> D --> E --> I
+    F --> G --> H --> I
+```
 
 ---
 
 ## 💰 Economic Context: Why This Matters
 
-### The "Buffet Analogy"
+<details>
+<summary><b>📊 Expand: The Economic Context (The "Buffet Analogy")</b></summary>
 
-Anthropic offers two pricing models:
+### The Pricing Problem
 
-| Model | API (pay-per-token) | Claude Max Subscription |
+Anthropic offers two pricing models—think of it like ordering à la carte vs. an all-you-can-eat buffet:
+
+| Model | API (Pay-Per-Token) | Claude Max Subscription |
 |-------|---------------------|-------------------------|
 | Claude Opus 4.5 | $15/M input, $75/M output | Unlimited* (flat monthly fee) |
 | Claude Sonnet 4.5 | $3/M input, $15/M output | Unlimited* (flat monthly fee) |
 
-\*\*Within usage limits and Anthropic's fair use policy
+*Within fair use policy
 
 ### Real-World Impact
 
 For a developer working extensively with Claude:
 
-- **Monthly Usage**: ~10M tokens (typical heavy usage)
-- **API Cost**: ~$150-450/month (pay-per-token)
-- **Subscription Cost**: $20-200/month (Claude Pro/Max)
-- **Potential Savings**: **5-20x** depending on usage
+| Metric | Value |
+|--------|-------|
+| **Monthly Usage** | ~10M tokens (typical heavy usage) |
+| **API Cost** | ~$150-450/month |
+| **Subscription Cost** | $20-200/month |
+| **Potential Savings** | **5-20x** |
 
 > *"In a month of Claude Code, it's easy to use so many LLM tokens that it would have cost you more than $1,000 if you'd paid via the API."*
 > — Hacker News Discussion, January 2026
 
+</details>
+
 ---
 
-## 🏗️ Two Implementation Patterns
+## Pattern 1: OAuth Token + Beta Headers
 
-### Pattern 1: OAuth Token + Beta Headers
+> [!WARNING]
+> **ToS Risk: HIGH** — This pattern spoofs Claude Code identity. Use at your own risk.
 
 A technique that extracts OAuth credentials from the official Claude Code CLI and uses them to make direct API calls.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Flow Architecture                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Your App ──→ Extract OAuth ──→ Refresh Token ──→ API Call   │
-│     │              from Claude Code          │               │
-│     │                credentials              │               │
-│     │                                         ▼               │
-│     │                              anthropic.com/v1/mess     │
-│     │                                 with special:          │
-│     │                                 - Bearer token         │
-│     │                                 - Beta headers         │
-│     │                                 - System prefix        │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
+### Architecture
+
+```mermaid
+sequenceDiagram
+    participant App as Your App
+    participant Auth as Auth File<br/>(~/.local/share/opencode/auth.json)
+    participant Refresh as Token Refresh<br/>(console.anthropic.com)
+    participant API as Anthropic API
+    
+    App->>Auth: 1. Extract OAuth credentials
+    Auth-->>App: access_token, refresh_token, expires
+    
+    alt Token Expired
+        App->>Refresh: 2. POST /v1/oauth/token
+        Refresh-->>App: New tokens
+        App->>Auth: Save updated tokens
+    end
+    
+    App->>API: 3. POST /v1/messages<br/>+ Bearer token<br/>+ Beta headers<br/>+ System prefix
+    API-->>App: Response
 ```
 
-#### Key Components
+### Key Components
 
 **1. OAuth Token Extraction**
 
 ```python
-# Load OAuth credentials from Claude Code auth file
+from pathlib import Path
+import json
+from typing import Optional
+
+# Claude Code stores auth in these locations
 OPENCODE_AUTH_PATHS = [
     Path.home() / ".local" / "share" / "opencode" / "auth.json",
     Path.home() / ".opencode" / "data" / "auth.json",
@@ -85,6 +205,7 @@ OPENCODE_AUTH_PATHS = [
 ]
 
 def load_oauth_credentials() -> Optional[dict]:
+    """Extract OAuth credentials from Claude Code auth file."""
     for auth_path in OPENCODE_AUTH_PATHS:
         if auth_path.exists():
             data = json.loads(auth_path.read_text())
@@ -102,7 +223,11 @@ def load_oauth_credentials() -> Optional[dict]:
 **2. Token Refresh**
 
 ```python
+import httpx
+import time
+
 async def refresh_oauth_token(refresh_token: str) -> Optional[dict]:
+    """Refresh expired OAuth token."""
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://console.anthropic.com/v1/oauth/token",
@@ -133,80 +258,60 @@ CLAUDE_CODE_BETA_FLAGS = (
     "fine-grained-tool-streaming-2025-05-14"
 )
 
+# System prompt MUST start with this prefix
 CLAUDE_CODE_SYSTEM_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
 
-def call_anthropic_with_oauth(
-    model: str, 
-    prompt: str, 
-    access_token: str,
-    system_prompt: Optional[str] = None
-):
-    headers = {
+def build_headers(access_token: str) -> dict:
+    return {
         "authorization": f"Bearer {access_token}",
         "anthropic-version": "2023-06-01",
         "anthropic-beta": CLAUDE_CODE_BETA_FLAGS,
         "content-type": "application/json",
     }
-    
-    # System prompt MUST start with the Claude Code prefix
-    final_system = CLAUDE_CODE_SYSTEM_PREFIX
-    if system_prompt:
-        final_system = f"{CLAUDE_CODE_SYSTEM_PREFIX}\n\n{system_prompt}"
-    
-    payload = {
-        "model": model,
-        "max_tokens": 4096,
-        "messages": [{"role": "user", "content": prompt}],
-        "system": final_system,
-    }
-    # ... make API call
 ```
 
-#### Pros/Cons
+### Pattern 1: Pros/Cons
 
-| Pros | Cons |
-|------|------|
-| ✅ No CLI dependency required | ❌ Needs OAuth extraction logic |
-| ✅ Direct API calls (fast) | ❌ Tokens expire, need refresh |
-| ✅ Fallback to API key possible | ❌ ToS violation risk |
-| ✅ Works with any HTTP client | ❌ OAuth changes may break it |
+| ✅ Pros | ❌ Cons |
+|---------|---------|
+| No CLI dependency required | Needs OAuth extraction logic |
+| Direct API calls (fastest) | Tokens expire, need refresh |
+| Fallback to API key possible | **HIGH ToS violation risk** |
+| Works with any HTTP client | OAuth endpoints may change |
 
 ---
 
-### Pattern 2: Claude CLI Proxy Server
+## Pattern 2: Claude CLI Proxy Server
 
-A technique that spawns the official Claude Code CLI as a subprocess and wraps it in an HTTP API.
+> [!NOTE]
+> **ToS Risk: MEDIUM** — Uses official CLI, technically a wrapper.
 
+A technique that spawns the official Claude Code CLI as a subprocess and wraps it in an OpenAI-compatible HTTP API.
+
+### Architecture
+
+```mermaid
+sequenceDiagram
+    participant Client as Any OpenAI Client
+    participant Proxy as Proxy Server<br/>(localhost:8765)
+    participant CLI as Claude CLI<br/>(subprocess)
+    participant API as Anthropic API
+    
+    Client->>Proxy: POST /v1/chat/completions<br/>(OpenAI format)
+    Proxy->>CLI: Spawn: claude --print --output-format json
+    CLI->>API: Official API call<br/>(auth handled by CLI)
+    API-->>CLI: Response
+    CLI-->>Proxy: JSON output
+    Proxy->>Proxy: Convert to OpenAI format
+    Proxy-->>Client: OpenAI-compatible response
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Flow Architecture                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Your App ──→ HTTP Request ──→ Proxy Server ──→ Claude CLI   │
-│     │                             │              │            │
-│     │                             │              ▼            │
-│     │                             │         Subprocess       │
-│     │                             │         (claude --print)  │
-│     │                             │              │            │
-│     │                             ▼              ▼            │
-│     │                          Parse JSON   official API      │
-│     │                         Convert to                      │
-│     │                         OpenAI format                   │
-│     │                             │                          │
-│     └────────────────────────────▼──────────────────────────┘
-│                          Response to app                      │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
 
-#### Key Components
+### Key Components
 
 **1. Spawn Claude CLI Subprocess**
 
 ```typescript
-import { spawn } from 'child_process';
-
-async function spawnClaude(prompt: string, system?: string): Promise<any> {
+async function spawnClaude(prompt: string, system?: string): Promise<ClaudeResponse> {
   const args = ['--print', '--output-format', 'json'];
   
   if (system) {
@@ -217,7 +322,6 @@ async function spawnClaude(prompt: string, system?: string): Promise<any> {
   const proc = Bun.spawn(['claude', ...args], {
     stdout: 'pipe',
     stderr: 'pipe',
-    stdin: 'pipe',
   });
 
   const stdout = await new Response(proc.stdout).text();
@@ -230,187 +334,8 @@ async function spawnClaude(prompt: string, system?: string): Promise<any> {
 
   return JSON.parse(stdout);
 }
-```
 
-**2. Create OpenAI-Compatible HTTP Server**
-
-```typescript
-import { Bun } from 'bun';
-
-function convertToOpenAIFormat(claudeResponse: any, requestModel: string) {
-  return {
-    choices: [{
-      message: {
-        role: 'assistant',
-        content: claudeResponse.result,
-      },
-      finish_reason: claudeResponse.is_error ? 'error' : 'stop',
-    }],
-    usage: {
-      prompt_tokens: claudeResponse.usage.input_tokens,
-      completion_tokens: claudeResponse.usage.output_tokens,
-      total_tokens: claudeResponse.usage.input_tokens + claudeResponse.usage.output_tokens,
-    },
-  };
-}
-
-const server = Bun.serve({
-  port: 8765,
-  async fetch(req) {
-    if (req.url.endsWith('/v1/chat/completions')) {
-      const body = await req.json();
-      const prompt = body.messages.map(m => `${m.role}: ${m.content}`).join('\n');
-      
-      const claudeResponse = await spawnClaude(prompt, body.system);
-      const openAIResponse = convertToOpenAIFormat(claudeResponse, body.model);
-      
-      return Response.json(openAIResponse);
-    }
-  },
-});
-```
-
-**3. Run in Background**
-
-```bash
-# Using tmux
-tmux new-session -d -s claude-proxy "bun start"
-
-# Using Docker
-docker run -d --name claude-proxy -p 8765:8765 ClaudeProxy
-```
-
-#### Pros/Cons
-
-| Pros | Cons |
-|------|------|
-| ✅ Official CLI (no API spoofing) | ❌ Requires Claude CLI installed |
-| ✅ Automatic auth handling | ❌ Subprocess overhead |
-| ✅ Works with ANY OpenAI client | ❌ Slower than direct API |
-| ✅ Minimal ToS risk | ❌ CLI updates may break it |
-
----
-
-## 🆚 Pattern Comparison
-
-| Aspect | OAuth + Headers | CLI Proxy |
-|--------|-----------------|-----------|
-| **Setup Complexity** | Medium (OAuth flow) | Low (just spawn CLI) |
-| **Performance** | Fast (direct API) | Medium (subprocess) |
-| **Stability** | Low (beta flags change) | Medium (CLI updates) |
-| **Auth Handling** | Manual (refresh logic) | Automatic (CLI handles) |
-| **ToS Risk** | High (spoofing) | Medium (using official CLI) |
-| **Use Case** | Production systems | Personal projects |
-
----
-
-## 📚 Existing Implementations
-
-These patterns are already implemented by various projects:
-
-| Project | Pattern | Language | Stars |
-|---------|---------|----------|-------|
-| [horselock/claude-code-proxy](https://github.com/horselock/claude-code-proxy) | OAuth Proxy | Node.js | 67 |
-| [mergd/ccproxy](https://github.com/mergd/ccproxy) | CLI Proxy | Go | - |
-| [phrazzld/switchboard](https://github.com/phrazzld/switchboard) | Service Proxy | Python | - |
-
-> 💡 **Tip**: Review these projects for production-ready code. This documentation focuses on explaining *how* they work, not providing another implementation.
-
----
-
-## 🤖 AI Prompts for Custom Implementation
-
-Below are prompts you can copy-paste to ask an AI (like Claude, GPT-4, etc.) to build a custom implementation based on these patterns.
-
-### Prompt for OAuth + Headers Pattern
-
-<details>
-<summary>📋 Click to expand prompt</summary>
-
-```
-I need you to build a Python module that implements the Anthropic Claude OAuth access pattern.
-
-## Requirements
-
-1. Extract OAuth credentials from Claude Code CLI auth file (~/.local/share/opencode/auth.json, ~/.opencode/data/auth.json, or ~/.config/opencode/auth.json)
-2. Implement automatic token refresh when expired
-3. Make API calls to anthropic.com/v1/messages with these special headers:
-   - authorization: Bearer {access_token}
-   - anthropic-version: 2023-06-01
-   - anthropic-beta: oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14
-4. System prompt MUST start with: "You are Claude Code, Anthropic's official CLI for Claude."
-5. If system_prompt provided, append it after the prefix: "{PREFIX}\n\n{USER_PROMPT}"
-6. Fallback to API key authentication if OAuth fails
-
-## Technical Details
-
-- Use httpx for async HTTP calls
-- Model mapping: anthropic/claude-opus-4.5 -> claude-opus-4-20250514, etc.
-- Token refresh: POST https://console.anthropic.com/v1/oauth/token with grant_type="refresh_token"
-- Refresh on expiry (with 60s buffer)
-- Save updated tokens back to auth file
-
-## Expected API
-
-```python
-async def call_anthropic(
-    model: str,
-    prompt: str,
-    max_tokens: int = 4096,
-    system_prompt: Optional[str] = None,
-) -> dict:
-    """Call Anthropic API - tries OAuth first, falls back to API key.
-    
-    Returns:
-        dict with 'response', 'usage', 'provider', 'model' keys
-    """
-```
-
-Please provide complete, working code with proper error handling and docs.
-```
-</details>
-
-### Prompt for CLI Proxy Pattern
-
-<details>
-<summary>📋 Click to expand prompt</summary>
-
-```
-I need you to build a Claude Code CLI proxy server that exposes an OpenAI-compatible API.
-
-## Requirements
-
-1. Create an HTTP server (port 8765) with these endpoints:
-   - GET /health - Health check
-   - GET /models - List available models (claude-opus-4, claude-sonnet-4, etc.)
-   - POST /v1/chat/completions - OpenAI-compatible chat completions
-
-2. For /v1/chat/completions:
-   - Accept OpenAI request format: {model, messages, temperature, max_tokens, system}
-   - Convert messages to CLI prompt format: "role: content\nrole: content"
-   - Spawn 'claude' CLI subprocess with args: --print --output-format json [--system-prompt SYSTEM] PROMPT
-   - Parse CLI JSON response
-   - Convert Claude response to OpenAI format:
-     - choices[0].message.content = claude.result
-     - usage.prompt_tokens = claude.usage.input_tokens
-     - usage.completion_tokens = claude.usage.output_tokens
-     - usage.total_tokens = input + output
-
-3. Technologies:
-   - Use Bun.serve() for the HTTP server
-   - Use Bun.spawn() for CLI subprocess
-   - TypeScript for type safety
-
-## Error Handling
-
-- CLI failure → 500 error with stderr details
-- Invalid JSON → 500 error with debug info
-- Timeout → 500 error
-
-## Expected CLI Response Format
-
-```typescript
-interface ClaudeCodeResponse {
+interface ClaudeResponse {
   type: 'result' | 'error';
   duration_ms: number;
   result: string;
@@ -421,127 +346,262 @@ interface ClaudeCodeResponse {
 }
 ```
 
+**2. OpenAI-Compatible HTTP Server**
+
+```typescript
+function convertToOpenAIFormat(claude: ClaudeResponse, model: string) {
+  return {
+    id: `chatcmpl-${Date.now()}`,
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: model,
+    choices: [{
+      index: 0,
+      message: { role: 'assistant', content: claude.result },
+      finish_reason: claude.type === 'error' ? 'error' : 'stop',
+    }],
+    usage: {
+      prompt_tokens: claude.usage.input_tokens,
+      completion_tokens: claude.usage.output_tokens,
+      total_tokens: claude.usage.input_tokens + claude.usage.output_tokens,
+    },
+  };
+}
+
+const server = Bun.serve({
+  port: 8765,
+  async fetch(req) {
+    const url = new URL(req.url);
+    
+    if (url.pathname === '/health') {
+      return Response.json({ status: 'ok' });
+    }
+    
+    if (url.pathname === '/v1/chat/completions' && req.method === 'POST') {
+      const body = await req.json();
+      const prompt = body.messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
+      
+      const claudeResponse = await spawnClaude(prompt, body.system);
+      return Response.json(convertToOpenAIFormat(claudeResponse, body.model));
+    }
+    
+    return new Response('Not Found', { status: 404 });
+  },
+});
+
+console.log(`Proxy running at http://localhost:${server.port}`);
+```
+
+**3. Run as Background Service**
+
+```bash
+# Using tmux
+tmux new-session -d -s claude-proxy "bun run server.ts"
+
+# Using systemd (Linux)
+# Create /etc/systemd/system/claude-proxy.service
+
+# Using Docker
+docker run -d --name claude-proxy -p 8765:8765 your-image
+```
+
+### Pattern 2: Pros/Cons
+
+| ✅ Pros | ❌ Cons |
+|---------|---------|
+| Uses official CLI (no spoofing) | Requires Claude CLI installed |
+| Automatic auth handling | Subprocess overhead (~100ms) |
+| Works with ANY OpenAI client | Slower than direct API |
+| Lower ToS risk | CLI updates may break it |
+
+---
+
+## 🆚 Pattern Comparison
+
+| Aspect | OAuth + Headers | CLI Proxy |
+|--------|-----------------|-----------|
+| **Setup Complexity** | Medium (OAuth flow) | Low (spawn CLI) |
+| **Performance** | ⚡ Fast (direct API) | 🐢 Medium (subprocess) |
+| **Stability** | 🔴 Low (beta flags change) | 🟡 Medium (CLI updates) |
+| **Auth Handling** | Manual (refresh logic) | Automatic (CLI handles) |
+| **ToS Risk** | 🔴 **HIGH** (spoofing) | 🟡 **MEDIUM** (wrapper) |
+| **Best For** | Maximum performance | Stability & safety |
+
+---
+
+## 🤔 Which Pattern Should I Use?
+
+```mermaid
+flowchart TD
+    A[Start] --> B{Need maximum<br/>performance?}
+    B -->|Yes| C{Comfortable with<br/>HIGH ToS risk?}
+    B -->|No| D{Need OpenAI<br/>compatibility?}
+    
+    C -->|Yes| E[Use Pattern 1:<br/>OAuth + Headers]
+    C -->|No| F[Use Pattern 2:<br/>CLI Proxy]
+    
+    D -->|Yes| F
+    D -->|No| G{Have Claude CLI<br/>installed?}
+    
+    G -->|Yes| F
+    G -->|No| H[Install Claude CLI first<br/>or use Pattern 1]
+    
+    style E fill:#ffcccc
+    style F fill:#ffffcc
+```
+
+**Quick Decision:**
+- 🏎️ **Need speed + accept high risk?** → Pattern 1 (OAuth)
+- 🛡️ **Prefer stability + lower risk?** → Pattern 2 (CLI Proxy)
+- 🔌 **Need OpenAI API compatibility?** → Pattern 2 (CLI Proxy)
+
+---
+
+## 🔒 Security Best Practices
+
+> [!IMPORTANT]
+> **Never commit credentials to version control!**
+
+### Token Storage
+```bash
+# ❌ BAD: Hardcoded paths
+AUTH_FILE = "~/.local/share/opencode/auth.json"
+
+# ✅ GOOD: Environment variables
+import os
+AUTH_FILE = os.environ.get("CLAUDE_AUTH_FILE", "~/.local/share/opencode/auth.json")
+```
+
+### Recommended Practices
+- 🔐 Use environment variables for sensitive paths
+- 🔐 Never commit `auth.json` to git (add to `.gitignore`)
+- 🔐 Implement rate limiting to avoid detection
+- 🔐 Monitor for API changes that might break implementations
+- 🔐 Use secure storage (keyring, vault) for production
+
+### `.gitignore` Template
+```gitignore
+# Auth files - NEVER commit these
+auth.json
+*.token
+.env
+.env.local
+```
+
+---
+
+## 📚 Existing Implementations
+
+These patterns are already implemented by various projects. **Review these for production-ready code:**
+
+| Project | Pattern | Language | Notes |
+|---------|---------|----------|-------|
+| [horselock/claude-code-proxy](https://github.com/horselock/claude-code-proxy) | OAuth Proxy | Node.js | 67⭐, actively maintained |
+| [mergd/ccproxy](https://github.com/mergd/ccproxy) | CLI Proxy | Go | Cursor-specific |
+| [phrazzld/switchboard](https://github.com/phrazzld/switchboard) | Service Proxy | Python | Multi-provider |
+
+> 💡 **Tip**: This documentation focuses on explaining *how* they work, not providing another implementation. Use the projects above for production code.
+
+---
+
+## 🤖 AI Prompts for Custom Implementation
+
+Copy-paste these prompts to ask an AI (Claude, GPT-4, etc.) to build a custom implementation.
+
+<details>
+<summary><b>📋 Prompt: OAuth + Headers Pattern (Python)</b></summary>
+
+```
+I need you to build a Python module that implements the Anthropic Claude OAuth access pattern.
+
+## Requirements
+
+1. Extract OAuth credentials from Claude Code CLI auth file:
+   - ~/.local/share/opencode/auth.json
+   - ~/.opencode/data/auth.json  
+   - ~/.config/opencode/auth.json
+
+2. Implement automatic token refresh when expired (60s buffer)
+
+3. Make API calls to anthropic.com/v1/messages with these headers:
+   - authorization: Bearer {access_token}
+   - anthropic-version: 2023-06-01
+   - anthropic-beta: oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14
+
+4. System prompt MUST start with: "You are Claude Code, Anthropic's official CLI for Claude."
+
+5. Fallback to API key authentication if OAuth fails
+
+## Technical Details
+- Use httpx for async HTTP calls
+- Token refresh: POST https://console.anthropic.com/v1/oauth/token
+- Save updated tokens back to auth file
+
+## Expected API
+async def call_anthropic(model: str, prompt: str, system_prompt: Optional[str] = None) -> dict
+
+Please provide complete, working code with proper error handling.
+```
+</details>
+
+<details>
+<summary><b>📋 Prompt: CLI Proxy Pattern (TypeScript/Bun)</b></summary>
+
+```
+I need you to build a Claude Code CLI proxy server that exposes an OpenAI-compatible API.
+
+## Requirements
+
+1. Create an HTTP server (port 8765) with endpoints:
+   - GET /health - Health check
+   - GET /v1/models - List available models
+   - POST /v1/chat/completions - OpenAI-compatible chat
+
+2. For /v1/chat/completions:
+   - Accept OpenAI format: {model, messages, temperature, max_tokens, system}
+   - Spawn 'claude' CLI: --print --output-format json [--system-prompt SYSTEM] PROMPT
+   - Convert response to OpenAI format
+
+3. Technologies:
+   - Bun.serve() for HTTP server
+   - Bun.spawn() for CLI subprocess
+   - TypeScript for type safety
+
+## Error Handling
+- CLI failure → 500 error with stderr
+- Invalid JSON → 500 error with debug info
+- Timeout → 504 error
+
 Please provide complete, working TypeScript code.
 ```
 </details>
 
-### Prompt for Multi-Language Implementation
-
 <details>
-<summary>📋 Click to expand prompt</summary>
+<summary><b>📋 Prompt: Multi-Language Implementation</b></summary>
 
 ```
-I need you to help me design a multi-language implementation strategy for Anthropic Claude subscription access.
+Help me create implementations in multiple languages for both Claude subscription patterns:
 
-## Context
-
-I want to document and provide code examples for TWO patterns:
-
-1. OAuth + Beta Headers pattern (direct API calls)
-2. CLI Proxy pattern (subprocess wrapper)
-
-## Task
-
-For each pattern, provide:
-
-1. **Python implementation** (using httpx, http.server)
-2. **TypeScript/Node.js implementation** (using axios, express)
-3. **Go implementation** (using net/http, os/exec)
-4. **Rust implementation** (using reqwest, tokio)
+## Languages
+- Python (httpx)
+- TypeScript/Bun
+- Go (net/http)
+- Rust (reqwest, tokio)
 
 ## For Each Language
-
-Provide:
 - Complete, runnable code
-- Installation instructions (requirements.txt, package.json, go.mod, Cargo.toml)
-- Run command (python main.py, node index.js, go run main.go, cargo run)
-- Test curl command to verify
-- Error handling patterns
-- Comments explaining key parts
+- Dependencies file (requirements.txt, package.json, go.mod, Cargo.toml)
+- Run command
+- Test curl command
+- Error handling
 
-## Focus Areas
+## Folder Structure
+/pattern1-oauth/{python,typescript,go,rust}
+/pattern2-cli-proxy/{python,typescript,go,rust}
 
-- OAuth: Token refresh, header construction, fallback logic
-- CLI Proxy: Subprocess management, response parsing, OpenAI format conversion
-- Both: Type safety, async handling, error handling
-
-## Output Format
-
-Create a folder structure:
-```
-/pattern1-oauth
-  /python
-  /typescript
-  /go
-  /rust
-/pattern2-cli-proxy
-  /python
-  /typescript  
-  /go
-  /rust
-```
-
-Each folder contains:
-- Main source file
-- Dependencies file
-- README.md with run instructions
-- example-curl.sh to test
-
-Please provide all implementations. Make them production-ready with proper error handling.
+Please provide production-ready implementations with proper error handling.
 ```
 </details>
-
----
-
-## ⚠️ Legal & ToS Considerations
-
-### Terms of Service
-
-From Anthropic's Claude Code documentation and GitHub issues:
-
-> "The OAuth API is for Claude Code only. Using OAuth tokens with third-party applications is a violation of our Terms of Service."
-
-**Key Points:**
-- ✅ Using Claude Code CLI directly: Intended use
-- ⚠️ Proxying CLI: Gray area (technical wrapper, still official CLI)
-- ❌ Spoofing headers with OAuth tokens: Explicit ToS violation
-- ❌ Automated scraping: May trigger abuse filters
-
-### Account Risks
-
-Based on community reports (Jan 2026):
-- Some users received account reviews for heavy usage via third-party tools
-- VPN + unusual usage patterns = higher risk
-- Geographic location matters (enforcement varies)
-
-### Economic Reality
-
-Anthropic's crackdown in January 2026 was primarily about:
-1. Preventing businesses from arbitrage (consumer plans for commercial use)
-2. Protecting revenue streams from API usage
-3. Technical safeguards ("tightened")
-
----
-
-## 🔧 Prerequisites
-
-### For OAuth + Headers Pattern
-
-- Claude Code CLI installed andauthenticated
-- HTTP client library (httpx, axios, etc.)
-- OAuth access to your Claude account
-
-### For CLI Proxy Pattern
-
-- Claude Code CLI installed and authenticated
-- HTTP server framework (Bun.serve, Express, etc.)
-- Sub/process spawning capabilities
-
-### Common Requirements
-
-- Active Claude Pro or Max subscription
-- Understanding of OAuth 2.0 flows
-- Basic HTTP/API knowledge
 
 ---
 
@@ -549,11 +609,26 @@ Anthropic's crackdown in January 2026 was primarily about:
 
 | Failure | Detection | Mitigation |
 |---------|-----------|------------|
-| Token expired | 401 error | Auto-refresh with refresh token |
-| Beta flags changed | 400/403 error | Fallback to API key |
+| Token expired | `401 Unauthorized` | Auto-refresh with refresh token |
+| Beta flags changed | `400/403` errors | Fallback to API key; check GitHub issues |
 | CLI not found | Spawn error | Prompt user to install Claude CLI |
-| CLI update breaks | Parse error | Version checking, graceful degradation |
-| Rate limit | 429 error | Exponential backoff, queue |
+| CLI update breaks | JSON parse error | Version pinning, graceful degradation |
+| Rate limit | `429 Too Many Requests` | Exponential backoff, request queue |
+| Session expired | `401` after refresh | Re-authenticate via Claude CLI |
+
+### Debugging Tips
+
+```python
+# Check if OAuth token is valid
+import time
+creds = load_oauth_credentials()
+if creds:
+    expires_at = creds["expires"] / 1000  # Convert ms to seconds
+    if time.time() > expires_at:
+        print("Token expired, needs refresh")
+    else:
+        print(f"Token valid for {(expires_at - time.time()) / 60:.1f} more minutes")
+```
 
 ---
 
@@ -565,54 +640,60 @@ Anthropic's crackdown in January 2026 was primarily about:
 - [OpenCode Documentation](https://opencode.ai/docs/)
 
 ### Community Discussions
-- [Hacker News - Anthropic Crackdown](https://news.ycombinator.com/item?id=46578701)
+- [Hacker News - Anthropic Crackdown (Jan 2026)](https://news.ycombinator.com/item?id=46578701)
 - [VentureBeat Coverage](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses)
-- [OpenCode Issue #6930](https://github.com/anomalyco/opencode/issues/6930)
 
 ### Related Technologies
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-- [OpenRouter](https://openrouter.ai/) - Alternative API aggregation
+- [OpenRouter](https://openrouter.ai/) - API aggregation alternative
 - [OpenCode](https://opencode.ai/) - AI-powered code editor
 
 ---
 
 ## 🤝 Contributing
 
-This is an educational documentation repository. Contributions welcome for:
+Contributions welcome for:
+- 📝 Additional language implementations
+- 🐛 Bug fixes and error handling improvements  
+- 📚 Documentation clarifications
+- 🔄 Updates when Anthropic changes their APIs
 
-- Additional language implementations
-- Better error handling examples
-- Updated patterns as Anthropic changes
-- Clarifications and corrections
-
-**Guidelines:**
+### How to Contribute
 1. Fork the repository
-2. Create a branch for your contribution
-3. Add or improve documentation
+2. Create a feature branch
+3. Make your changes
 4. Submit a pull request
+
+### Reporting Breakages
+If a pattern stops working:
+1. [Open an issue](https://github.com/ShreeMulay/anthropic-subscription-optimization/issues) with error logs
+2. Include: pattern used, error message, Claude CLI version
+3. Check if others have reported the same issue
 
 ---
 
 ## 📄 License
 
-MIT License - Educational use only.
+MIT License - **Educational use only.**
 
-> This documentation is provided for learning purposes. Usage of these techniques may violate Anthropic's Terms of Service. Users are responsible for their own compliance.
+> This documentation is provided for learning purposes. Usage of these techniques may violate Anthropic's Terms of Service. **Users are responsible for their own compliance.**
 
 ---
 
 ## 🙏 Acknowledgments
 
 - Community members who discovered and documented these patterns
-- The maintainers of existing proxy implementations
-- Anthropic for providing Claude and the amazing tools they've built
+- Maintainers of existing proxy implementations
+- Anthropic for Claude and Claude Code
 
 ---
 
 <div align="center">
 
-*Built for the community to understand, learn, and build responsibly.*
+**⚠️ Remember: Educational purposes only. Use responsibly.**
 
-**⭐ Star this repo if it helped you!**
+*Built for the community to understand, learn, and make informed decisions.*
+
+**[⭐ Star this repo](https://github.com/ShreeMulay/anthropic-subscription-optimization) if it helped you!**
 
 </div>
